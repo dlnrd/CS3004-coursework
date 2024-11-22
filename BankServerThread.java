@@ -7,10 +7,8 @@ public class BankServerThread extends Thread {
 	private SharedBankState bankState;
 	private String clientName;
 
-	// Setup the thread
+	// setup the thread
 	public BankServerThread(Socket bankSocket, String _clientName, SharedBankState _bankState) {
-
-		// super(ActionServerThreadName);
 		this.bankSocket = bankSocket;
 		bankState = _bankState;
 		clientName = _clientName;
@@ -31,7 +29,7 @@ public class BankServerThread extends Thread {
 					outputLine = bankState.processInput(clientName, inputLine);
 					out.println(outputLine);
 					bankState.releaseLock();
-					System.out.println(); // empty line
+					System.out.println();
 				} catch (InterruptedException e) {
 					System.err.println("Failed to get lock when reading:" + e);
 				}

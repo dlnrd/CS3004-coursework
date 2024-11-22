@@ -1,15 +1,7 @@
-import java.net.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import java.io.*;
-
 public class SharedBankState {
 
 	private double[] accounts;
 	private boolean accessing = false; // true a thread has a lock, false otherwise
-
-	// Constructor
 
 	SharedBankState(double[] accounts) {
 		this.accounts = accounts;
@@ -36,12 +28,12 @@ public class SharedBankState {
 		System.out.println(me.getName() + " released a lock!");
 	}
 
-	public boolean validateInput(String input) {
-		String pattern = "([Aa]dd [0-9]+)|([Ss]ubtract [0-9]+)|([Tt]ransfer [0-9]+ [A-C|a-c])";
+	public boolean validInput(String input) {
+		String pattern = "([Aa]dd ([0-9]+|[0-9]+\\.[0-9]+))|([Ss]ubtract ([0-9]+|[0-9]+\\.[0-9]+))|([Tt]ransfer ([0-9]+|[0-9]+\\.[0-9]+) [A-C|a-c])";
 		return input.matches(pattern);
 	}
 
-	public boolean validateThreadName(String input) {
+	public boolean validThreadName(String input) {
 		return input.matches("[ABC]");
 	}
 
@@ -71,7 +63,8 @@ public class SharedBankState {
 
 	public synchronized void transfer_money(String account1, String account2, double value) {
 		if (account1.equals(account2)) {
-			return;
+			return; // doesn't need to exist but would help if state was persistent and program
+					// crashed after subtract
 		}
 		subtract_money(account1, value);
 		add_money(account2, value);
@@ -84,40 +77,34 @@ public class SharedBankState {
 	public synchronized String processInput(String clientName, String input) {
 		String outputToClient = null;
 
-		// validate input
-		if (validateInput(input)) {
-			if (validateThreadName(clientName)) {
-				String[] arguments = input.split(" ");
-				double value = Double.parseDouble(arguments[1]);
-
-				if (arguments[0].matches("[Aa]dd")) {
-					add_money(clientName, value);
-					outputToClient = value + " units have been added to " + clientName;
-				} else if (arguments[0].matches("[Ss]ubtract")) {
-					subtract_money(clientName, value);
-					outputToClient = value + " units have been subtract to " + clientName;
-				} else if (arguments[0].matches("[Tt]ransfer")) {
-					String toAccount = arguments[2];
-					transfer_money(clientName, toAccount, value);
-					outputToClient = value + " units have been transfered from " + clientName + " to " + toAccount;
-				} else {
-					// shouldn't be possible
-					System.out.println("SOMETHING WRONG");
-				}
-
-			}
-			// wrong threadname
-			else {
-				outputToClient = ("ERROR: Wrong threadname/clientname");
-			}
-			// wrong input
+		if (!validInput(input)) {
+			outputToClient = ("ERR: Invalid command entered");
+		} else if (!validThreadName(clientName)) {
+			outputToClient = ("ERR: Wrong threadname/clientname");
 		} else {
-			outputToClient = ("Invalid command entered");
+			String[] arguments = input.split(" ");
+			double value = Double.parseDouble(arguments[1]);
+
+			if (arguments[0].matches("[Aa]dd")) {
+				add_money(clientName, value);
+				outputToClient = value + " units have been added to " + clientName;
+			} else if (arguments[0].matches("[Ss]ubtract")) {
+				subtract_money(clientName, value);
+				outputToClient = value + " units have been subtract to " + clientName;
+			} else if (arguments[0].matches("[Tt]ransfer")) {
+				String toAccount = arguments[2];
+				transfer_money(clientName, toAccount, value);
+				outputToClient = value + " units have been transfered from " + clientName + " to " + toAccount;
+			} else {
+				// shouldn't be possible as input has been validated
+				System.out.println("ERR: Developer made oopsie");
+			}
 		}
 
-		// Return the output message to the ActionServer
+		// return the output message to the BankThread
 		System.out.println("Server sending: \"" + outputToClient + "\" to " + clientName);
 		System.out.println(getAccounts());
+
 		return outputToClient;
 	}
 }
